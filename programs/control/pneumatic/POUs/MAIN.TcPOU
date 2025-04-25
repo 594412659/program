@@ -1,0 +1,355 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MAIN" Id="{8b425ad7-8924-4bf8-8a6e-03f34868f939}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR_INPUT
+	FY:FBFY;
+	
+	bb:REAL:=0;
+	cc:REAL:=0;
+	sskztest AT  %Q*:INT:=16384;
+	
+	shenchu AT %I* :BOOL;
+	suohui AT %I* :BOOL;
+	T:REAL:=0;
+	T_ss:REAL:=0;
+
+	
+	InteFlag:BOOL:=FALSE;  //用于清空积分值
+
+	
+
+	JZF AT %Q* :BOOL:=FALSE;
+	
+
+	vjudge:REAL:=0;
+    n:int:=0;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//第0步 初始化 如一些控制参数 初始的指令等
+Initialize();
+//第一步 数据采样
+T:=T+GFY.CycleT;
+T_ss:=T_ss+Gss.CycleT;
+FY.getData();
+FY.ident_data();
+FY.pne_ident();
+
+//第二步获取目标指令
+
+//俯仰的目标指令
+CASE GFY.CTRLMode OF
+1: 
+	;//什么都不要做
+2: 
+	sineCMD();
+3: 
+	continueSlope();
+4: 
+    trajectory();
+ELSE
+	GFY.CTRLMode:=0;
+	GFY.BLFKD:=0;
+END_CASE
+GFY.CTRLMode_L:=GFY.CTRLMode;
+
+//伸缩
+CASE Gss.CTRLMode OF
+1: 
+	;//什么都不要做
+2: 
+	sineCMD_ss();
+3: 
+	continueSlope_SS();
+4: 
+    trajectory();
+ELSE
+	Gss.CTRLMode:=0;
+	Gss.BLFKD:=0;
+END_CASE
+Gss.CTRLMode_L:=Gss.CTRLMode;
+
+//根据指令进行控制 获得相对开度 第三步选择控制器
+IF GFY.CTRLMode=0 THEN
+	GFY.BLFKD:=0;
+ELSE
+	FY.ctrl_choose(mode:=GFY.controllerChoose);//选择第n种方法控制
+END_IF
+
+//死区补偿
+IF GFY.BLFKD>0 THEN 
+	GFY.BLFKD_final:=GFY.BLFKD+GFY.deadareaP;
+END_IF
+IF GFY.BLFKD<0 THEN 
+	GFY.BLFKD_final:=GFY.BLFKD+GFY.deadareaN;
+END_IF
+
+GFY.BLFKD_final:=saturation(0.13,0.03,GFY.BLFKD_final); 
+FY.BLFKZ:= REAL_TO_INT( GFY.BLFKD_final*16383+16383);
+GSS.BLFKD:=saturation(gss.safe_u_up,gss.safe_u_dn,GSS.BLFKD); 
+
+IF InteFlag THEN
+	InteFlag:=FALSE;
+	FY.PID_FY.PID_Integral:=0;
+	FY.VFPID_FY.PID_Integral:=0;
+END_IF
+
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <Method Name="continueSlope" Id="{d9f2ad93-e844-4d43-9ac9-9f1424b47841}">
+      <Declaration><![CDATA[METHOD continueSlope : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF GFY.CTRLMode<>GFY.CTRLMode_L THEN
+	n:=0;
+END_IF
+JZF:=TRUE;
+
+vjudge:=GFY.s_FY;
+IF GFY.BMQ>17 THEN
+	GFY.s_FY:=-17;
+END_IF
+IF GFY.BMQ<-17 THEN
+	GFY.s_FY:=17;
+END_IF
+IF GFY.s_FY<>vjudge THEN
+	GFY.wmax:=GFY.w[n];
+	n:=n+1;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="continueSlope_SS" Id="{9c01c7b2-68ba-4c14-a48a-1da66e40aa53}">
+      <Declaration><![CDATA[METHOD continueSlope_SS : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF GSS.CTRLMode<>GSS.CTRLMode_L THEN
+	n:=0;
+END_IF
+JZF:=TRUE;
+
+vjudge:=Gss.x_SS;
+IF GSS.WY>400 THEN
+	Gss.x_SS:=-400;
+END_IF
+IF GSS.WY<-400 THEN
+	Gss.x_SS:=400;
+END_IF
+IF GSS.WY<>vjudge THEN
+	Gss.Vmax:=GSS.w[n];
+	n:=n+1;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialize" Id="{8ae5fe28-52e7-49fc-a781-1b2281e29fe0}">
+      <Declaration><![CDATA[METHOD Initialize : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="sineCMD" Id="{a09acf89-db27-44bb-822e-ece8cc79deb3}">
+      <Declaration><![CDATA[METHOD sineCMD : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF GFY.CTRLMode<>GFY.CTRLMode_L THEN
+	T:=0;
+END_IF
+JZF:=TRUE;
+
+
+GFY.S_FY:=GFY.Amp*SIN(2*3.14515926/GFY.ZhouQi*T)+GFY.Bias;
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="sineCMD_SS" Id="{83229cb3-75b0-4f91-a953-e10bdf2d7524}">
+      <Declaration><![CDATA[METHOD sineCMD_SS : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Gss.CTRLMode<>Gss.CTRLMode_L THEN
+	T_ss:=0;
+END_IF
+JZF:=TRUE;
+
+
+Gss.x_SS:=Gss.Amp*SIN(2*3.14515926/Gss.ZhouQi*T_ss)+GSS.Bias;
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="trajectory" Id="{6b63eda8-c22f-4a88-b6d1-4a394e3401f0}">
+      <Declaration><![CDATA[METHOD trajectory : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF GFY.CTRLMode<>GFY.CTRLMode_L THEN
+	T:=0;
+END_IF
+IF GSS.CTRLMode<>GSS.CTRLMode_L THEN
+	T:=0;
+END_IF
+
+GFY.S_FY:=((Gsys.Ak1[1]/(GSYS.omega*1))*SIN(GSYS.omega*1*T)-
+		   (Gsys.Bk1[1]/(GSYS.omega*1))*COS(GSYS.omega*1*T)+
+		   (Gsys.Ak1[2]/(GSYS.omega*2))*SIN(GSYS.omega*2*T)-
+           (Gsys.Bk1[2]/(GSYS.omega*2))*COS(GSYS.omega*2*T)+
+           (Gsys.Ak1[3]/(GSYS.omega*3))*SIN(GSYS.omega*3*T)- 
+           (Gsys.Bk1[3]/(GSYS.omega*3))*COS(GSYS.omega*3*T)+
+           (Gsys.Ak1[4]/(GSYS.omega*4))*SIN(GSYS.omega*4*T)-
+           (Gsys.Bk1[4]/(GSYS.omega*4))*COS(GSYS.omega*4*T)+
+           (Gsys.Ak1[5]/(GSYS.omega*5))*SIN(GSYS.omega*5*T)-
+           (Gsys.Bk1[5]/(GSYS.omega*5))*COS(GSYS.omega*5*T))*180/3.14159265359;
+
+
+Gss.x_SS:=(Gsys.Ak2[1]/(GSYS.omega*1))*SIN(GSYS.omega*1*T)-
+		  (Gsys.Bk2[1]/(GSYS.omega*1))*COS(GSYS.omega*1*T)+
+		  (Gsys.Ak2[2]/(GSYS.omega*2))*SIN(GSYS.omega*2*T)-
+          (Gsys.Bk2[2]/(GSYS.omega*2))*COS(GSYS.omega*2*T)+
+          (Gsys.Ak2[3]/(GSYS.omega*3))*SIN(GSYS.omega*3*T)- 
+          (Gsys.Bk2[3]/(GSYS.omega*3))*COS(GSYS.omega*3*T)+
+          (Gsys.Ak2[4]/(GSYS.omega*4))*SIN(GSYS.omega*4*T)-
+          (Gsys.Bk2[4]/(GSYS.omega*4))*COS(GSYS.omega*4*T)+
+          (Gsys.Ak2[5]/(GSYS.omega*5))*SIN(GSYS.omega*5*T)-
+          (Gsys.Bk2[5]/(GSYS.omega*5))*COS(GSYS.omega*5*T)+150;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="MAIN">
+      <LineId Id="393" Count="1" />
+      <LineId Id="362" Count="0" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="567" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="204" Count="0" />
+      <LineId Id="518" Count="0" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="491" Count="0" />
+      <LineId Id="490" Count="0" />
+      <LineId Id="363" Count="0" />
+      <LineId Id="368" Count="0" />
+      <LineId Id="488" Count="0" />
+      <LineId Id="373" Count="0" />
+      <LineId Id="399" Count="0" />
+      <LineId Id="376" Count="0" />
+      <LineId Id="400" Count="0" />
+      <LineId Id="602" Count="1" />
+      <LineId Id="381" Count="0" />
+      <LineId Id="385" Count="0" />
+      <LineId Id="492" Count="0" />
+      <LineId Id="367" Count="0" />
+      <LineId Id="489" Count="0" />
+      <LineId Id="553" Count="0" />
+      <LineId Id="551" Count="0" />
+      <LineId Id="555" Count="6" />
+      <LineId Id="604" Count="1" />
+      <LineId Id="562" Count="3" />
+      <LineId Id="554" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="243" Count="0" />
+      <LineId Id="387" Count="2" />
+      <LineId Id="384" Count="0" />
+      <LineId Id="568" Count="0" />
+      <LineId Id="545" Count="0" />
+      <LineId Id="544" Count="0" />
+      <LineId Id="546" Count="1" />
+      <LineId Id="549" Count="1" />
+      <LineId Id="548" Count="0" />
+      <LineId Id="211" Count="0" />
+      <LineId Id="459" Count="0" />
+      <LineId Id="392" Count="0" />
+      <LineId Id="402" Count="0" />
+      <LineId Id="222" Count="1" />
+      <LineId Id="396" Count="0" />
+      <LineId Id="226" Count="0" />
+      <LineId Id="395" Count="0" />
+      <LineId Id="221" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="242" Count="0" />
+      <LineId Id="230" Count="0" />
+      <LineId Id="219" Count="0" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="296" Count="0" />
+      <LineId Id="301" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.continueSlope">
+      <LineId Id="18" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="6" Count="11" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.continueSlope_SS">
+      <LineId Id="18" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="6" Count="11" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.Initialize">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.sineCMD">
+      <LineId Id="6" Count="2" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="20" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.sineCMD_SS">
+      <LineId Id="6" Count="2" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="20" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MAIN.trajectory">
+      <LineId Id="10" Count="1" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="7" Count="1" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="38" Count="9" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

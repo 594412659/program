@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="getAI" Id="{19cca186-4838-4198-bab9-e48e1e92960f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION getAI : REAL
+VAR_INPUT
+	AIvalue:INT;	//模块直接读取到的数字值 不管12bit还是16bit都是0~32767
+	upLMT:REAL;		//20mA 对应的物理意义
+	downLMT:REAL;	//4mA 对应的物理意义
+	Range:REAL;     //4~20mA之间采集数字变化范围
+END_VAR
+VAR
+	aa:REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[aa:=INT_TO_REAL(AIvalue);
+getAI:=aa/Range*(upLMT-downLMT)+downLMT;]]></ST>
+    </Implementation>
+    <LineIds Name="getAI">
+      <LineId Id="17" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

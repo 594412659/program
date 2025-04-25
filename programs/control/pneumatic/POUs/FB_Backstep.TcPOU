@@ -1,0 +1,227 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Backstep" Id="{4ca8893c-26be-47dd-840b-62eb74c05773}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Backstep
+VAR_INPUT
+	x1d:REAL;
+	x1:REAL;  
+	x2:REAL;  
+	x3:REAL;  
+	Amp:REAL;
+	krise:REAL;
+	BC_up:REAL;
+	BC_down:REAL;
+	cyct:REAL;
+	k1:REAL;
+	f1:REAL;
+	f2:REAL;
+	k2:REAL;
+	k3:REAL;
+	L_d:REAL;
+	b0:REAL;
+	w2:REAL;
+	w3:REAL;
+	kr1:REAL;
+	kr2:REAL;
+	beta1:REAL;
+	beta2:REAL;
+	M:REAL;  
+	aw:REAL; 
+	daw:REAL; 
+	d1:REAL; 
+	u_L:REAL; 
+END_VAR
+VAR_OUTPUT
+	z1:REAL;
+	a1:REAL;
+	ar1:REAL;
+	z2:REAL;
+	dz2:REAL;
+	a2:REAL;
+	ar2:REAL;
+	z3:REAL;
+	u:REAL;
+	u_BC:REAL;
+	da1:REAL;
+	dda1:REAL;
+	da2:REAL;
+	da2_BC:REAL;
+	ed1:REAL;
+	ed2:REAL;
+END_VAR
+VAR
+	Feed:REAL:=0;
+	L_x1d:REAL:=0;
+	LL_x1d:REAL:=0;
+	dz1:REAL;
+	dx1d:REAL;
+	L_dx1d:REAL:=0;
+	ddx1d:REAL:=0;
+	L_ddx1d:REAL:=0;
+	dddx1d:REAL:=0;
+	
+	sign1:REAL:=0;
+	Inte11:REAL:=0;
+	Inte12:REAL:=0;
+	Inte21:REAL:=0;
+	Inte22:REAL:=0;
+	
+	Tf1:REAL;
+	x2f:REAL;
+	L_x2f:REAL:=0;
+	L_a2:REAL:=0;
+	x3f:REAL;
+	L_x3f:REAL:=0;
+	
+	Tf2:REAL;
+	
+	edx1:REAL;
+	ex1:REAL:=0;
+	ex2:REAL:=0;
+	edx2:REAL;
+	edd1:REAL;
+	
+	ex3:REAL:=0;
+	edx3:REAL;
+	edd2:REAL;
+	
+	kr1c:REAL;
+	kr2c:REAL;
+	beta1c:REAL;
+	beta2c:REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+edx1:=ex2-3*w2*(ex1-x1);
+edx2:=(x3-aw)/M*L_d+ed1-3*w2*w2*(ex1-x1);
+edd1:=-w2*w2*w2*(ex1-x1);
+
+edx3:=b0*u_L+ed2-2*w3*(ex3-x3);
+edd2:=-w3*w3*(ex3-x3);
+
+ex1:=ex1+edx1*cyct;
+ex2:=ex2+edx2*cyct;
+ex3:=ex3+edx3*cyct;
+ed2:=ed2+edd2*cyct;
+ed1:=ed1+edd1*cyct;
+
+z1:=x1-x1d;
+dx1d:=(x1d-L_x1d)/cyct;
+dz1:=ex2-dx1d;
+L_x1d:=x1d;
+a1:=dx1d-k1*z1;
+
+z2:=ex2-a1;
+ddx1d:=(dx1d-L_dx1d)/cyct;
+L_dx1d:=dx1d;
+dddx1d:=0*(ddx1d-L_ddx1d)/cyct;
+L_ddx1d:=ddx1d;
+
+da1:=ddx1d-k1*(ex2-dx1d);
+
+//变rise1
+kr1c:=kr1*EXPT(2.71828,-(Amp-ABS(krise)));
+beta1c:=beta1*EXPT(2.71828,-(Amp-ABS(krise)));
+
+ar1:=-M*kr1c*z2-(kr1c*k2*Inte11+beta1c*Inte12);
+
+IF GFY.BC_kr1=0 THEN
+	Inte11:=0;
+	Inte12:=0;
+ELSE
+	Inte11:=Inte11+z2*cyct;
+	Inte12:=Inte12+Sign(x:=z2)*cyct;
+END_IF
+
+a2:=(-k2*z2+M*da1-M*ed1+ar1)/L_d+aw;
+//a2:=aw+M*da1-k2*z2+ar1;
+
+dda1:=dddx1d-k1*(edx2-ddx1d);
+dz2:=edx2-da1;
+
+z3:=x3-a2;
+
+
+da2_BC:=(-k2*dz2+M*dda1-M*edd1)/L_d+daw;;
+
+
+kr2c:=kr2*EXPT(2.71828,-(Amp-ABS(krise)));
+beta2c:=beta2*EXPT(2.71828,-(Amp-ABS(krise)));
+
+ar2:=-kr2c*z3-(kr2c*k3*Inte21+beta2c*Inte22);
+
+IF GFY.BC_kr2=0 THEN
+	Inte21:=0;
+	Inte22:=0;
+ELSE
+	Inte21:=Inte21+z3*cyct;
+	Inte22:=Inte22+Sign(x:=z3)*cyct;
+END_IF
+
+u_BC:=(-k3*z3+da2_BC-ed2+ar2)/b0;
+u_BC:=saturation(upLMT:=BC_up,downLMT:=BC_down,input:=u_BC);
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Backstep">
+      <LineId Id="526" Count="0" />
+      <LineId Id="532" Count="0" />
+      <LineId Id="527" Count="0" />
+      <LineId Id="535" Count="0" />
+      <LineId Id="528" Count="2" />
+      <LineId Id="541" Count="0" />
+      <LineId Id="539" Count="0" />
+      <LineId Id="542" Count="0" />
+      <LineId Id="531" Count="0" />
+      <LineId Id="524" Count="1" />
+      <LineId Id="540" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="404" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="425" Count="0" />
+      <LineId Id="424" Count="0" />
+      <LineId Id="411" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="827" Count="3" />
+      <LineId Id="823" Count="0" />
+      <LineId Id="244" Count="0" />
+      <LineId Id="728" Count="4" />
+      <LineId Id="735" Count="0" />
+      <LineId Id="734" Count="0" />
+      <LineId Id="727" Count="0" />
+      <LineId Id="544" Count="0" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="420" Count="0" />
+      <LineId Id="419" Count="0" />
+      <LineId Id="416" Count="0" />
+      <LineId Id="421" Count="0" />
+      <LineId Id="417" Count="0" />
+      <LineId Id="545" Count="0" />
+      <LineId Id="431" Count="0" />
+      <LineId Id="429" Count="0" />
+      <LineId Id="831" Count="2" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="834" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="640" Count="0" />
+      <LineId Id="636" Count="0" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="643" Count="0" />
+      <LineId Id="553" Count="0" />
+      <LineId Id="641" Count="1" />
+      <LineId Id="638" Count="0" />
+      <LineId Id="436" Count="1" />
+      <LineId Id="435" Count="0" />
+      <LineId Id="388" Count="0" />
+      <LineId Id="395" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_SFVFPID" Id="{f35d745b-840d-4847-b3c1-a43332987f13}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_SFVFPID
+
+VAR_INPUT  
+    RespectValue: REAL;//期望值
+	RealValue   : REAL;//实际值
+	
+	PID_Kv:REAL;
+	PID_Kp:REAL;
+	PID_Ki:REAL;
+	PID_Kd:REAL;
+	KF:REAL;
+	F:REAL;
+	KdF:REAL;
+	dF:REAL;
+	Kdx:REAL;
+	dx:REAL;
+	upLMT_int:REAL;     //抗积分饱和
+	downLMT_int:REAL;   //抗积分饱和
+	upLMT_out:REAL;     //输出限幅
+	downLMT_out:REAL;   //输出限幅
+
+	PID_Integral     : REAL := 0.0;//定义积分项
+END_VAR
+VAR_OUTPUT
+	P_PART:REAL;
+	I_PART:REAL;
+	D_PART:REAL;
+	V_PART:REAL;
+	SFVFPID_Out:REAL;
+	
+END_VAR
+VAR
+	PID_Error        : REAL := 0.0;//偏差
+    PID_LastError    : REAL := 0.0;//上次偏差
+	PID_L_LastError  : REAL := 0.0;//上上次偏差
+	PID_Proportion   : REAL := 0.0;//定义比例项
+	PID_VF           : REAL:= 0.0;  //定义速度前馈项
+	PID_Differential : REAL;       //定义微分项
+	PID_L_SetValue   : REAL := 0.0;//上次指令
+	PID_Temp         : REAL;       //输出
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[PID_Error:=RespectValue-RealValue;          //偏差=期望值-实际值
+PID_Proportion:=PID_Error;                         //比例项=偏差
+PID_Integral := PID_Integral+PID_Ki*PID_Error;			//积分项=偏差累积
+
+//抗积分饱和
+PID_Integral:=saturation(upLMT:=upLMT_int , downLMT:=downLMT_int , input:=PID_Integral );
+PID_VF:=RespectValue-PID_L_SetValue;               //速度前馈项=指令-上次指令
+PID_Differential:=PID_Error-PID_LastError;         //微分项=偏差-上次偏差
+
+P_PART:=PID_Kp*PID_Proportion;
+I_PART:=PID_Integral;
+D_PART:=PID_Kd*PID_Differential;
+V_PART:=PID_Kv*PID_VF;
+PID_Temp:=PID_Kp*PID_Proportion+PID_Integral+PID_Kd*PID_Differential+PID_Kv*PID_VF; //PID控制
+
+PID_L_SetValue:=RespectValue;
+PID_LastError:=PID_Error;
+//输出限幅
+PID_Temp:=PID_Temp-KF*F-KdF*dF-Kdx*dx;
+SFVFPID_Out:=saturation(upLMT:=upLMT_out , downLMT:=downLMT_out , input:=PID_Temp );]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SFVFPID">
+      <LineId Id="45" Count="18" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

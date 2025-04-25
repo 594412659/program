@@ -1,0 +1,852 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FBFY" Id="{86652d04-09c9-4b11-8f48-bd9aabcae747}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FBFY
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+
+VAR_INPUT
+
+	YL1 AT %I*: INT;
+	YL2 AT %I*: INT;
+	
+	BMQ AT %I*: INT;
+
+	WY AT %I*: INT;
+	
+
+	BLFKZ AT %Q*: INT;  
+	PIDKZ:INT;    
+	VFPIDKZ:INT;  
+	
+	
+	Diff_dx_FY:Diff_n;
+	Butter_x_FY:Butter_q;
+	Butter_s_FY:Butter_q;
+	Butter_dx_FY:Butter_dq;
+	Butter_ds_FY:Butter_dq;
+	Butter_ddx_FY:Butter_ddq;
+	Butter_dds_FY:Butter_ddq;
+	Butter_YL1A_FY:Butter_q;
+	Butter_dYL1A_FY:Butter_dq;
+	Butter_YL2A_FY:Butter_q;
+	Butter_dYL2A_FY:Butter_dq;
+	Butter_dYyz_FY:Butter_dq;
+	Butter_BC_xd_FY:Butter_q;
+	wn:REAL:=2*3.14515926*50;   
+	Ts:REAL:=0.001;      
+	
+	FYxd:cmdTOxd;  
+	VFPID_FY:VFPID; 
+	PID_FY:PID;		
+	SFVFPID:FB_SFVFPID;
+	LADRC:FB_LADRC_BC; 
+	DLADRC:FB_DLADRC;
+	Backstep:FB_Backstep;
+	BCADRC:FB_Backstep_ADRC;
+	
+
+	KD_PID:REAL:=0;
+	KD_VFPID:REAL:=0;
+	KD_LADRC:REAL:=0;
+	KD_SFVFPID:REAL:=0;
+	KD_DLADRC:REAL:=0;
+	KD_backstep:REAL:=0;
+	KD_BCADRC:REAL:=0;
+	
+	P_part:REAL;
+	I_part:REAL;
+	D_part:REAL;
+	V_part:REAL;
+	
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="ctrl_choose" Id="{3fc56c77-b5ed-437d-815b-7e413d421098}">
+      <Declaration><![CDATA[METHOD ctrl_choose : BOOL
+VAR_INPUT
+	mode:INT; 
+END_VAR
+VAR
+	TEMP:REAL;
+	upLMT_int: INT;
+END_VAR
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FYxd(xcmd:=GFY.s_FY , v:=GFY.wmax , xd=>GFY.xd );//期望俯仰角度
+
+PID_FY(
+	RespectValue:=GFY.xd , 
+	RealValue:=GFY.BMQ , 
+	PID_Kp:=GFY.KP , 
+	PID_Ki:=GFY.KI , 
+	PID_Kd:=GFY.KD , 
+	upLMT_int:=GFY.up_int , 
+	downLMT_int:=GFY.down_int , 
+	upLMT_out:=GFY.up_out , 
+	downLMT_out:=GFY.down_out ,
+	P_PART=>P_part,
+	I_PART=>I_part,
+	D_PART=>D_part, 
+	PID_Out=>KD_PID );
+
+
+LADRC(
+	xr:= GFY.xd, 
+	y:= GFY.fBMQ, 
+	u_L:=GFY.BLFKD , 
+	b0:= GFY.LADRC_b0, 
+	w0:= GFY.LADRC_w0, 
+	wc:= GFY.LADRC_wc, 
+	kv:= GFY.LADRC_kv, 
+	ka:= GFY.LADRC_ka, 
+	upLMT:=GFY.LADRC_u_up , 
+	dnLMT:=GFY.LADRC_u_down , 
+	u=>KD_LADRC );
+	
+VFPID_FY(
+	RespectValue:=GFY.xd  , 
+	RealValue:=GFY.fBMQ , 
+	PID_Kv:=GFY.KV ,
+	PID_Kp:=GFY.KP , 
+	PID_Ki:=GFY.KI , 
+	PID_Kd:=GFY.KD , 
+	upLMT_int:=GFY.up_int , 
+	downLMT_int:=GFY.down_int , 
+	upLMT_out:=GFY.up_out , 
+	downLMT_out:=GFY.down_out ,
+	P_PART=>P_part,
+	I_PART=>I_part,
+	D_PART=>D_part,
+    V_PART=>V_part,
+	PID_Out=>KD_VFPID );
+	
+SFVFPID(
+	RespectValue:=GFY.xd  , 
+	RealValue:=GFY.fBMQ , 
+	PID_Kv:=GFY.KV ,
+	PID_Kp:=GFY.KP , 
+	PID_Ki:=GFY.KI , 
+	PID_Kd:=GFY.KD ,
+	KF:=GFY.KF , 
+	F:=GFY.Y , 
+	KdF:=GFY.KdF , 
+	dF:=GFY.dY , 
+	Kdx:=GFY.Kdx ,
+	dx:=GFY.fdBMQ,
+	upLMT_int:=GFY.up_int , 
+	downLMT_int:=GFY.down_int , 
+	upLMT_out:=GFY.up_out , 
+	downLMT_out:=GFY.down_out , 
+	P_PART=> TEMP, 
+	I_PART=> TEMP, 
+	D_PART=>TEMP , 
+	V_PART=>TEMP , 
+	SFVFPID_Out=>KD_SFVFPID );
+	
+DLADRC(
+	xr:= GFY.xd, 
+	y:= GFY.fBMQ, 
+	u_L:=GFY.BLFKD, //上一次的开度 观测器用
+	b0:= GFY.LADRC_b0, 
+	w0:= GFY.LADRC_w0, 
+	wc:= GFY.LADRC_wc, 
+	kv:= GFY.LADRC_kv, 
+	ka:= GFY.LADRC_ka, 
+	u=> KD_DLADRC);
+
+Backstep(
+	x1d:=GFY.BC_xd*3.1415926/180 , 
+	x1:=GFY.fBMQ*3.1415926/180 , 
+	x2:=GFY.fdBMQ*3.1415926/180 , 
+	x3:=GFY.Y ,
+	BC_up:=GFY.BC_u_up,
+	BC_down:=GFY.BC_u_down,
+	Amp:=GFY.Amp,
+	krise:=GFY.BC_xd,
+	L_d:=GFY.L, 
+	cyct:=GFY.CycleT , 
+	k1:=GFY.BC_k1 , 
+	f1:=GFY.BC_f1 , 
+	f2:=GFY.BC_f2 , 
+	k2:=GFY.BC_k2 , 
+	k3:=GFY.BC_k3 , 
+	kr1:=GFY.BC_kr1 ,
+	kr2:=GFY.BC_kr2 ,
+	beta1:=GFY.BC_beta1 ,
+	beta2:=GFY.BC_beta2 ,
+	u_L:=GFY.BLFKD,
+	b0:=GFY.BC_b0,
+	w2:=GFY.BC_w2,
+	w3:=GFY.BC_w3,
+	M:=GFY.M , 
+	aw:=GFY.yyz ,
+    daw:=GFY.dyyz ,
+	d1:=GFY.d1 , 
+	z1=>GFY.BC_z1 , 
+	a1=>GFY.BC_a1 ,
+	ar1=>GFY.BC_ar1 ,
+ 	da1=>GFY.BC_da1 ,
+	z2=>GFY.BC_z2 , 
+	a2=>GFY.BC_a2 , 
+	ar2=>GFY.BC_ar2 ,
+	da2=>GFY.BC_da2 ,
+	da2_BC=>GFY.BC_da2_BC ,
+	dz2=>GFY.BC_dz2 ,
+	dda1=>GFY.BC_dda1 ,
+	z3=>GFY.BC_z3 , 
+	u_BC=>KD_backstep ,
+	ed1=>GFY.BC_d1 ,
+	ed2=>GFY.BC_d2
+ );
+	
+BCADRC(
+	x1d:=GFY.BC_xd , 
+	x1:=GFY.fBMQ , 
+	x2:=GFY.fdBMQ , 
+	x3:=GFY.Y , 
+	cyct:=GFY.CycleT , 
+	k1:=GFY.BCADRC_k1 , 
+	k2:=GFY.BCADRC_k2 , 
+	k3:=GFY.BCADRC_k3 , 
+	b:= , 
+	b0:=GFY.BCADRC_b0 , 
+	w2:=GFY.BCADRC_w2 , 
+	w3:=GFY.BCADRC_w3 , 
+	kr1:=GFY.BCADRC_kr1 , 
+	kr2:=GFY.BCADRC_kr2 , 
+	beta1:=GFY.BCADRC_beta1 , 
+	beta2:=GFY.BCADRC_beta2 , 
+	M:=GFY.M , 
+	aw:=GFY.yyz , 
+	daw:=GFY.dyyz , 
+	d1:= , 
+	u_L:=GFY.BLFKD , 
+	z1=> , 
+	a1=> , 
+	ar1=> , 
+	z2=> , 
+	dz2=> , 
+	a2=> , 
+	ar2=> , 
+	z3=> , 
+	u=>KD_BCADRC ,  
+	da1=> , 
+	dda1=> , 
+	da2=> );
+
+CASE mode OF
+1:
+	GFY.BLFKD:=KD_PID;	
+2:
+	GFY.BLFKD:=KD_VFPID;	
+3:
+	GFY.BLFKD:=KD_LADRC;
+4:
+	GFY.BLFKD:=KD_SFVFPID;	
+5:
+	GFY.BLFKD:=KD_DLADRC;
+6:
+	GFY.BLFKD:=KD_backstep;
+7:
+	GFY.BLFKD:=KD_BCADRC;
+END_CASE
+
+IF GFY.star_err=TRUE THEN
+	GFY.error_n:=GFY.error_n+1;
+	GFY.error2_sum:=GFY.error2_sum+GFY.erro*GFY.erro;
+    GFY.RMSE:=EXPT(GFY.error2_sum/GFY.error_n,0.5);
+ELSE
+	GFY.RMSE:=0;
+	GFY.error_n:=0;
+	GFY.error2_sum:=0;
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="getData" Id="{6e5e2646-1bd0-4b9a-b7cb-a145ab2472d9}">
+      <Declaration><![CDATA[METHOD getData : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	
+	YLup:REAL:=1000000;
+	YLdown:REAL:=0;
+	YL1Range:REAL:=30518;
+	YL2Range:REAL:=30518;
+	
+	BMQup:REAL:=60;
+	BMQdown:REAL:=0;
+	BMQJZ:REAL:=32.12;      
+	BMQRange:REAL:=30485;
+	
+	
+	WYup:REAL:=0.18;
+	WYdown:REAL:=0;
+	WYJZ:REAL:=0.07745+0.00958;       
+	WYRange:REAL:=31956;
+	
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+GFY.YL1:=getAI(AIvalue:=YL1 , upLMT:= YLup, downLMT:=YLdown, Range:=YL1Range );
+GFY.YL2:=getAI(AIvalue:=YL2 , upLMT:= YLup, downLMT:=YLdown, Range:=YL2Range );
+
+GFY.YL1A:=GFY.YL1+101325;
+GFY.YL2A:=GFY.YL2+101325;
+
+GFY.BMQ:=(getAI(AIvalue:=BMQ, upLMT:=BMQup, downLMT:=BMQdown, Range:=BMQRange )-BMQJZ)*-1;
+
+GFY.WY:=getAI(AIvalue:=WY, upLMT:=WYup, downLMT:=WYdown, Range:=WYRange )-WYJZ;
+
+Butter_s_FY(But_u:=GFY.BMQ , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fBMQ );
+Butter_ds_FY(But_u:=GFY.BMQ , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fdBMQ );
+Butter_dds_FY(But_u:=GFY.BMQ , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fddBMQ );
+
+Butter_x_FY(But_u:=GFY.WY , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fWY);
+
+Butter_dx_FY(But_u:=GFY.WY , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fdWY );
+
+Butter_ddx_FY(But_u:=GFY.WY , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fddWY );
+
+Butter_YL1A_FY(But_u:=GFY.YL1A , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fYL1A );
+Butter_YL2A_FY(But_u:=GFY.YL2A , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.fYL2A );
+Butter_dYL1A_FY(But_u:=GFY.YL1A , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.dfYL1A );
+Butter_dYL2A_FY(But_u:=GFY.YL2A , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.dfYL2A );
+
+GFY.fYL1:=GFY.fYL1A-101325;
+GFY.fYL2:=GFY.fYL2A-101325;
+GFY.dfYL1:=GFY.dfYL1A;
+GFY.dfYL2:=GFY.dfYL2A;
+
+Butter_dYyz_FY(But_u:=GFY.Yyz , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.dYyz );
+Butter_BC_xd_FY(But_u:=GFY.xd , But_wn:=wn , But_Ts:=Ts , But_y=>GFY.BC_xd );
+
+GFY.erro:=GFY.xd-GFY.fBMQ;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ident_data" Id="{408eaf79-5225-45a1-9dfd-074c7b34ba26}">
+      <Declaration><![CDATA[METHOD ident_data : BOOL
+VAR_INPUT
+END_VAR
+
+VAR
+	Aa:REAL:=3.1415926/4*0.032*0.032;
+	Ab:REAL:=Aa-3.1415926/4*0.012*0.012;
+	La:REAL:=0.237; //短斜边长度
+	Lb:REAL:=0.357;       //长斜边长度
+	Lc0:REAL:=0.436;      //顶边0度时的长度
+	Lc:REAL;              //顶边长度
+	BMQ0:REAL;            //俯仰角0度时的两斜边的夹角
+	d:REAL;        //力臂长度
+	a3kz:REAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[BMQ0:=ACOS((La*La+Lb*Lb-Lc0*Lc0)/(2*La*Lb))*180/3.1415926;
+Lc:=Lc0+GFY.fWY;
+d:=La*Lb*SIN((BMQ0-GFY.fBMQ)*3.1415926/180)/(Lc);
+GFY.d:=d;
+
+GFY.Y:=-(GFY.fYL1*Aa-GFY.fYL2*Ab);
+GFY.a1:=COS(GFY.fBMQ*3.1415926/180)/d;
+GFY.a2:=SIN(GFY.fBMQ*3.1415926/180)/d;
+GFY.a3:=Sign(x:=-1*GFY.fdWY);
+a3kz:=ATAN(-GFY.fdWY*GFY.katan)*2/3.1415926;
+
+GFY.a4:=-GFY.fdWY;
+GFY.a5:=Sign(x:=GFY.fdBMQ)/d;
+GFY.a6:=GFY.fdBMQ/d*3.1415926/180;
+
+GFY.dY:=-GFY.dfYL1*Aa+GFY.dfYL2*Ab;
+
+GFY.Yyz:=(23.3485*GFY.a1-3.5735*GFY.a2+11.5936*a3kz+184.7243*GFY.a4)*GFY.Kfric;
+
+GSYS.tao1:=GFY.Y;
+
+GSYS.fai11:=GFY.a1;
+GSYS.fai12:=GFY.a2;
+GSYS.fai13:=GSYS.q2*GSYS.fai11;
+
+GSYS.q1:=GFY.fBMQ*3.14159265359/180;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="PID_ctrl" Id="{4e8c373f-3726-4065-88f7-944dfac10ec9}">
+      <Declaration><![CDATA[METHOD PID_ctrl : BOOL
+VAR
+	BLFDL:REAL;   
+	TRANS_X:REAL; 
+	
+END_VAR
+VAR_INPUT
+	fyCMD:REAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FYxd(xcmd:=fyCMD , v:=GFY.wmax , xd=>TRANS_X );//期望俯仰角度
+
+PID_FY(
+	RespectValue:=TRANS_X , 
+	RealValue:=GFY.BMQ , 
+	PID_Kp:=GFY.KP , 
+	PID_Ki:=GFY.KI , 
+	PID_Kd:=GFY.KD , 
+	upLMT_int:=GFY.up_int , 
+	downLMT_int:=GFY.down_int , 
+	upLMT_out:=GFY.up_out , 
+	downLMT_out:=GFY.down_out ,
+	P_PART=>P_part,
+	I_PART=>I_part,
+	D_PART=>D_part, 
+	PID_Out=>BLFDL );
+
+	
+PIDKZ:=REAL_TO_INT( BLFDL/(2)*32767+16383);
+
+
+	
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="pne_ident" Id="{dbf92e64-322c-43bb-9684-3365b97f0d8c}">
+      <Declaration><![CDATA[METHOD pne_ident : BOOL
+VAR_INPUT
+END_VAR
+VAR
+fdBMQ:REAL:=GFY.fdBMQ;
+n:REAL:=1.35;      //多变系数
+gamma:REAL:=1.4;   //比热比
+big_R:REAL:=287.2; //气体常数
+x:REAL:=-GFY.fWY;  //位移
+Aa:REAL:=3.1415926/4*0.032*0.032;
+Ab:REAL:=Aa-3.1415926/4*0.012*0.012;
+V0a:REAL;    //A腔初始体积
+V0b:REAL;    //B腔初始体积
+Va:REAL;    //A腔体积
+Vb:REAL;    //B腔体积
+map:REAL; //流出A腔的质量流量（全开）
+Ta:REAL;    //A腔温度
+mbn:REAL;  //流入B腔的质量流量（全开）
+Tb:REAL;    //B腔温度
+T0:REAL:=298.15;
+TS:REAL:=298.15;
+pa:REAL:=GFY.fYL1A;
+pb:REAL:=GFY.fYL2A;
+ps:REAL:=701325;
+p0:REAL:=101325;
+rou:REAL:=1.225;
+b:REAL:=0.12;         //样本参数
+C:REAL:=1.65/1000000; //样本参数
+Qa:REAL;              //A腔热交换/热交换系数
+Sa:REAL;              //A腔热传导面积
+Qb:REAL;              //B腔热交换/热交换系数
+Sb:REAL;              //B腔热传导面积
+xa0:REAL:=0.104;      //无杆腔行程
+xb0:REAL:=0.06;       //有杆腔行程
+
+v1:REAL:=724617.451510192;
+v2:REAL:=36860.5049289015;
+v3:REAL:=-572717.138744856;
+v4:REAL:=-0.361483017650489;
+v5:REAL:=-0.947406419530867;
+v6:REAL:=562284.882323816;
+
+
+//v11:REAL;
+//v12:REAL;
+//v14:REAL;
+
+//v21:REAL;
+//v22:REAL;
+//v24:REAL;
+
+
+//v11p:REAL:=0.000222161;
+//v12p:REAL:=0.001504466;
+//v14p:REAL:=7.47E-10;
+
+//v21p:REAL:=2.20E-04;
+//v22p:REAL:=0.003197174;
+//v24p:REAL:=4.54E-10;
+
+//v11n:REAL:=7.27E-05;
+//v12n:REAL:=-0.000940345;
+//v14n:REAL:=-1.32E-10;
+//v21n:REAL:=9.73E-05;
+//v22n:REAL:=0.002663631;
+//v24n:REAL:=4.88E-10;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[V0a:=xa0*Aa+0.02*0.006*0.006*3.1415926/4;
+V0b:=xb0*Ab+0.02*0.006*0.006*3.1415926/4;
+Va:=V0a-Aa*x;
+Vb:=V0b+Ab*x;
+
+//Ta:=Ts*EXPT((pa/p0),((n-1)/n));
+//Tb:=Ts*EXPT((pb/p0),((n-1)/n));
+
+Ta:=Ts;
+Tb:=Ts;
+
+IF (p0/pa)>b THEN
+	map:=pa*C*rou*SQRT(T0/Ta)*SQRT(1-((p0/pa-b)/(1-b))*((p0/pa-b)/(1-b)));
+ELSE
+	map:=pa*C*rou*SQRT(T0/Ta);	
+END_IF
+
+IF (pb/ps)>b THEN
+	mbn:=ps*C*rou*SQRT(T0/Ts)*SQRT(1-((pb/ps-b)/(1-b))*((pb/ps-b)/(1-b)));
+ELSE
+	mbn:=ps*C*rou*SQRT(T0/Ts);	
+END_IF
+
+Sa:=2*Aa+3.1415926*0.032*(xa0-x);
+Sb:=2*Ab+3.1415926*(0.032+0.012)*(xb0+x);
+Qa:=Sa*(Ts-Ta);
+Qb:=Sb*(Ts-Tb);
+
+GFY.u:=GFY.BLFKD;
+
+GFY.Y1:=GFY.dfYL1;
+GFY.IY1:=GFY.YL1;
+GFY.Y2:=GFY.dfYL2;
+GFY.IY2:=GFY.YL2;
+
+IF GFY.xd>0 THEN
+	GFY.b11:=-(map*big_R*T0)/Va;
+	GFY.b12:=-(map*big_R*T0)/Va*GFY.u;
+	GFY.Ib13:=1.2*pa*Aa/Va;
+	GFY.b14:=(ps-pa)*big_R*T0/Va;
+	GFY.b21:=1.4*mbn*big_R*T0/Vb;
+	GFY.b22:=1.4*mbn*big_R*T0/Vb*GFY.u;
+	GFY.Ib23:=-1.2*pb*Ab/Vb;
+	GFY.b24:=-1.4*(pb-p0)*big_R*T0/Vb;
+ELSE
+	GFY.b11:=1.4*map*big_R*T0/Va;
+	GFY.b12:=1.4*map*big_R*T0/Va*GFY.u;
+	GFY.Ib13:=1.2*pa*Aa/Va;
+	GFY.b14:=-1.4*(ps-pa)*big_R*T0/Va;
+	GFY.b21:=mbn*big_R*T0/Vb;
+	GFY.b22:=mbn*big_R*T0/Vb*GFY.u;
+	GFY.Ib23:=-1.2*pb*Ab/Vb;
+	GFY.b24:=-(pb-p0)*big_R*T0/Vb;
+END_IF
+
+GFY.Vb:=Vb;
+GFY.Va:=Va;
+
+//IF GFY.xd>0 THEN
+//	v11:=v11p;
+//	v12:=v12p;
+//	v14:=v14p;
+//	v21:=v21p;
+//	v22:=v22p;
+//	v24:=v24p;
+//ELSE
+//	v11:=v11n;
+//	v12:=v12n;
+//	v14:=v14n;
+//	v21:=v21n;
+//	v22:=v22n;
+//	v24:=v24n;
+//END_IF
+
+//GFY.Y1yz:=GFY.b11*v11+GFY.b12*v12+GFY.b14*v14-GFY.Ib13*GFY.fdwy;
+//GFY.Y2yz:=GFY.b21*v21+GFY.b22*v22+GFY.b24*v24-GFY.Ib23*GFY.fdwy;
+
+//GFY.d1:=(GFY.b21*v21+GFY.b24*v24-GFY.Ib23*GFY.fdwy)*Ab
+//-(GFY.b11*v11+GFY.b14*v14-GFY.Ib13*GFY.fdwy)*Aa;
+//GFY.b:=GFY.b21*v22*Ab-GFY.b11*v12*Aa;
+
+//GFY.bv11:=GFY.b11*v11*Aa;
+//GFY.bv13:=-GFY.Ib13*GFY.fdwy*Aa;
+//GFY.bv14:=GFY.b14*v14*Aa;
+
+//GFY.bv21:=GFY.b21*v21*Ab;
+//GFY.bv23:=-GFY.Ib23*GFY.fdwy*Ab;
+//GFY.bv24:=GFY.b24*v24*Ab;
+
+//GFY.map:=map;
+GFY.dx3yz:=GFY.BLFKD*v1-GFY.fWY*v2-GFY.fdWY*v3+GFY.YL1A*v4+GFY.YL2A*v5+v6;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="VFPID_ctrl" Id="{0f029ad0-79a2-43be-8c90-50d1ecc929f2}">
+      <Declaration><![CDATA[METHOD VFPID_ctrl : BOOL
+VAR
+	BLFDL:REAL;   
+	TRANS_X:REAL; 
+	END_VAR
+VAR_INPUT
+	fyCMD:REAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FYxd(xcmd:=fyCMD , v:=GFY.wmax , xd=>TRANS_X );//期望俯仰角度
+
+GFY.xd:=TRANS_X;
+
+VFPID_FY(
+	RespectValue:=TRANS_X , 
+	RealValue:=GFY.fBMQ , 
+	PID_Kv:=GFY.KV ,
+	PID_Kp:=GFY.KP , 
+	PID_Ki:=GFY.KI , 
+	PID_Kd:=GFY.KD , 
+	upLMT_int:=GFY.up_int , 
+	downLMT_int:=GFY.down_int , 
+	upLMT_out:=GFY.up_out , 
+	downLMT_out:=GFY.down_out ,
+	P_PART=>P_part,
+	I_PART=>I_part,
+	D_PART=>D_part,
+    V_PART=>V_part,
+	PID_Out=>BLFDL );
+
+IF BLFDL>0 THEN
+	BLFDL:=BLFDL+GFY.deadareaP;
+ELSE
+	BLFDL:=BLFDL-GFY.deadareaN;
+END_IF
+	
+//补充转换关系
+VFPIDKZ:=REAL_TO_INT( BLFDL/(2)*32767+16383);
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FBFY">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FBFY.ctrl_choose">
+      <LineId Id="36" Count="0" />
+      <LineId Id="56" Count="13" />
+      <LineId Id="55" Count="0" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="324" Count="4" />
+      <LineId Id="336" Count="3" />
+      <LineId Id="333" Count="2" />
+      <LineId Id="322" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="89" Count="14" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="131" Count="4" />
+      <LineId Id="117" Count="4" />
+      <LineId Id="143" Count="1" />
+      <LineId Id="136" Count="2" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="127" Count="3" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="158" Count="0" />
+      <LineId Id="167" Count="7" />
+      <LineId Id="157" Count="0" />
+      <LineId Id="184" Count="4" />
+      <LineId Id="206" Count="0" />
+      <LineId Id="406" Count="3" />
+      <LineId Id="396" Count="0" />
+      <LineId Id="189" Count="5" />
+      <LineId Id="227" Count="2" />
+      <LineId Id="226" Count="0" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="242" Count="0" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="195" Count="1" />
+      <LineId Id="244" Count="0" />
+      <LineId Id="198" Count="2" />
+      <LineId Id="230" Count="0" />
+      <LineId Id="215" Count="0" />
+      <LineId Id="201" Count="1" />
+      <LineId Id="231" Count="0" />
+      <LineId Id="216" Count="0" />
+      <LineId Id="243" Count="0" />
+      <LineId Id="245" Count="1" />
+      <LineId Id="203" Count="0" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="350" Count="1" />
+      <LineId Id="349" Count="0" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="261" Count="6" />
+      <LineId Id="270" Count="1" />
+      <LineId Id="273" Count="21" />
+      <LineId Id="296" Count="2" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="153" Count="0" />
+      <LineId Id="155" Count="0" />
+      <LineId Id="204" Count="1" />
+      <LineId Id="257" Count="1" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="386" Count="0" />
+      <LineId Id="364" Count="1" />
+      <LineId Id="373" Count="0" />
+      <LineId Id="367" Count="2" />
+      <LineId Id="371" Count="0" />
+      <LineId Id="374" Count="0" />
+      <LineId Id="370" Count="0" />
+      <LineId Id="362" Count="0" />
+    </LineIds>
+    <LineIds Name="FBFY.getData">
+      <LineId Id="22" Count="1" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="26" Count="2" />
+      <LineId Id="30" Count="1" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="223" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="220" Count="0" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="138" Count="3" />
+      <LineId Id="190" Count="0" />
+      <LineId Id="166" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="195" Count="0" />
+      <LineId Id="194" Count="0" />
+      <LineId Id="253" Count="1" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="165" Count="0" />
+    </LineIds>
+    <LineIds Name="FBFY.ident_data">
+      <LineId Id="45" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="137" Count="2" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="140" Count="0" />
+    </LineIds>
+    <LineIds Name="FBFY.PID_ctrl">
+      <LineId Id="38" Count="11" />
+      <LineId Id="87" Count="2" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="75" Count="1" />
+      <LineId Id="61" Count="0" />
+    </LineIds>
+    <LineIds Name="FBFY.pne_ident">
+      <LineId Id="109" Count="1" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="47" Count="0" />
+      <LineId Id="299" Count="1" />
+      <LineId Id="298" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="48" Count="1" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="51" Count="4" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="66" Count="1" />
+      <LineId Id="71" Count="1" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="286" Count="0" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="287" Count="0" />
+      <LineId Id="290" Count="0" />
+      <LineId Id="289" Count="0" />
+      <LineId Id="401" Count="0" />
+      <LineId Id="400" Count="0" />
+      <LineId Id="301" Count="0" />
+      <LineId Id="303" Count="0" />
+      <LineId Id="350" Count="0" />
+      <LineId Id="305" Count="2" />
+      <LineId Id="351" Count="0" />
+      <LineId Id="304" Count="0" />
+      <LineId Id="396" Count="0" />
+      <LineId Id="402" Count="6" />
+      <LineId Id="397" Count="1" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="115" Count="0" />
+      <LineId Id="159" Count="0" />
+      <LineId Id="492" Count="2" />
+      <LineId Id="499" Count="1" />
+      <LineId Id="575" Count="2" />
+      <LineId Id="424" Count="0" />
+      <LineId Id="501" Count="1" />
+      <LineId Id="495" Count="0" />
+      <LineId Id="579" Count="1" />
+      <LineId Id="578" Count="0" />
+      <LineId Id="497" Count="1" />
+      <LineId Id="505" Count="0" />
+      <LineId Id="503" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="239" Count="0" />
+      <LineId Id="566" Count="0" />
+      <LineId Id="508" Count="0" />
+      <LineId Id="567" Count="0" />
+      <LineId Id="241" Count="0" />
+      <LineId Id="568" Count="1" />
+      <LineId Id="571" Count="0" />
+      <LineId Id="570" Count="0" />
+      <LineId Id="572" Count="1" />
+      <LineId Id="640" Count="0" />
+      <LineId Id="639" Count="0" />
+      <LineId Id="649" Count="0" />
+    </LineIds>
+    <LineIds Name="FBFY.VFPID_ctrl">
+      <LineId Id="13" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="37" Count="2" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="40" Count="9" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="64" Count="1" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="26" Count="2" />
+      <LineId Id="84" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

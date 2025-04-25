@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="RISE" Id="{fe175226-8bcd-4c49-acff-03cd6ba17eed}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK RISE
+VAR_INPUT
+	x1d:REAL;
+	x1:REAL;
+	x2:REAL;
+	x3:REAL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	a1:REAL; //虚拟控制率1
+	e1:REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[e1:=x1-x1d;]]></ST>
+    </Implementation>
+    <LineIds Name="RISE">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

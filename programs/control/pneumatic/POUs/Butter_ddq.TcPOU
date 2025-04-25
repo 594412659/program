@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Butter_ddq" Id="{1d0a18bc-4331-4225-8bad-ba4653b4ec36}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Butter_ddq
+VAR_INPUT
+	But_u:REAL;
+	But_wn:REAL;
+	But_Ts:REAL;
+END_VAR
+VAR_OUTPUT
+	But_y:REAL;
+END_VAR
+VAR
+	aa:REAL:=0;
+	bb:REAL:=0;
+	last_y:REAL:=0;
+	llast_y:REAL:=0;
+	last_u:REAL:=0;
+	llast_u:REAL:=0;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[But_y:=(But_u*But_wn*But_wn)/(1+But_wn*But_wn*But_Ts*But_Ts+SQRT(2)*But_wn*But_Ts)
+      -(2*But_wn*But_wn*last_u)/(1+But_wn*But_wn*But_Ts*But_Ts+SQRT(2)*But_wn*But_Ts)
+	  +(But_wn*But_wn*llast_u)/(1+But_wn*But_wn*But_Ts*But_Ts+SQRT(2)*But_wn*But_Ts)
+      +last_y*(2+SQRT(2)*But_wn*But_Ts)/(1+But_wn*But_wn*But_Ts*But_Ts+SQRT(2)*But_wn*But_Ts)
+	  -llast_y/(1+But_wn*But_wn*But_Ts*But_Ts+SQRT(2)*But_wn*But_Ts);
+	  
+aa:=last_y;  
+last_y:=But_y; 
+llast_y:=aa;
+
+bb:=last_u;  
+last_u:=But_u; 
+llast_u:=bb;
+]]></ST>
+    </Implementation>
+    <LineIds Name="Butter_ddq">
+      <LineId Id="22" Count="0" />
+      <LineId Id="27" Count="1" />
+      <LineId Id="23" Count="1" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="34" Count="1" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="37" Count="2" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

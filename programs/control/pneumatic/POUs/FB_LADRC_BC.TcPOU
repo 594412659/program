@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_LADRC_BC" Id="{c3dfecca-fe7c-4033-90c3-a279f405fb47}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_LADRC_BC
+VAR_INPUT
+	xr:REAL; //期望的位移(广义)
+	y:REAL;//当前位移 
+	u_L:REAL; //当前控制量（相对开度） 即上次计算的结果
+	
+	b0:REAL:=1;
+	w0:REAL:=1;
+	wc:REAL:=1;
+	
+	kv:REAL:=0; //用于表示速度部分是否用于控制器计算  取值为1或0
+	ka:REAL:=0; //用于表示加速度部分是否用于控制器的计算  取值为1或0
+
+	upLMT:REAL:=0;
+	dnLMT:REAL:=0;
+END_VAR
+VAR_OUTPUT
+	u:REAL; //计算得到的控制律
+END_VAR
+VAR
+	Ts:REAL:=0.001; //采样时间控制时间
+	z1:REAL;
+	z2:REAL;
+	z3:REAL;
+	z4:REAL;
+	
+	z1_L:REAL:=0; //上次状态估计量
+	z2_L:REAL:=0;
+	z3_L:REAL:=0;
+	z4_L:REAL:=0;
+	
+	//u_L:REAL; //当前控制量（相对开度） 即上次计算的结果
+	u0:REAL;
+	xr_L:REAL:=0; //用于计算指令的速度 
+
+	vr_L:REAL:=0; //用于计算指令的加速度
+	
+	//滤波后的状态
+	fz1:REAL;
+	fz2:REAL;
+	fz3:REAL;
+	fz4:REAL;
+	
+	fz1_L:REAL:=0;
+	fz2_L:REAL:=0;
+	fz3_L:REAL:=0;
+	fz4_L:REAL:=0;
+	
+	hz_1:REAL:=50;
+	hz_2:REAL:=50;
+	hz_3:REAL:=50;
+	hz_4:REAL:=50;
+	
+	useFilter:BOOL:=false; //是否启用状态估计滤波；
+
+	PID_Integral:REAL:=0;
+	
+	PID_Error:REAL:=0;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[LESO();
+controller();]]></ST>
+    </Implementation>
+    <Method Name="controller" Id="{59a6b649-449e-4df8-a492-168888c77d86}">
+      <Declaration><![CDATA[METHOD controller : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	vr:REAL; 
+	ar:REAL; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[vr:=(xr-xr_L)/Ts;
+ar:=(vr-vr_L)/Ts;
+IF useFilter THEN
+	
+	fz1:=filter_oneMs(f_Hz:=hz_1 , outLast:=fz1_L , input:=z1 );
+	fz2:=filter_oneMs(f_Hz:=hz_2 , outLast:=fz2_L , input:=z2 );
+	fz3:=filter_oneMs(f_Hz:=hz_3 , outLast:=fz3_L , input:=z3 );
+	fz4:=filter_oneMs(f_Hz:=hz_4 , outLast:=fz4_L , input:=z4 );
+ELSE
+	fz1:=z1;
+	fz2:=z2;
+	fz3:=z3;
+	fz4:=z4;
+END_IF
+
+
+u0:=wc*wc*wc*(xr-fz1)+3*wc*wc*(vr*kv-fz2)+3*wc*(ar*ka-fz3);
+
+u:=(u0-fz4)/b0;
+
+u:=saturation(upLMT:=upLMT,downLMT:=dnLMT,input:=u);
+
+
+xr_L:=xr;
+vr_L:=vr;
+
+fz1_L:=fz1;
+fz2_L:=fz2;
+fz3_L:=fz3;
+fz4_L:=fz4;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LESO" Id="{099646de-a12f-4c00-b46e-e284e7d3bb93}">
+      <Declaration><![CDATA[METHOD LESO : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	ez:REAL:=0;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[ez:=y-z1_L;
+
+z1:=z1_L+Ts*(z2_L+4*w0*ez);
+z2:=z2_L+Ts*(z3_L+6*w0*w0*ez);
+z3:=z3_L+Ts*(z4_L+4*w0*w0*w0*ez)+Ts*b0*u_L;
+z4:=z4_L+Ts*(w0*w0*w0*w0*ez);
+
+z1_L:=z1;
+z2_L:=z2;
+z3_L:=z3;
+z4_L:=z4;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_LADRC_BC">
+      <LineId Id="9" Count="0" />
+      <LineId Id="35" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_LADRC_BC.controller">
+      <LineId Id="11" Count="1" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="55" Count="3" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="59" Count="2" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="34" Count="1" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="64" Count="2" />
+    </LineIds>
+    <LineIds Name="FB_LADRC_BC.LESO">
+      <LineId Id="5" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="2" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="15" Count="2" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

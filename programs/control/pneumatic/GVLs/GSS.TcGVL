@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="GSS" Id="{f4dab23b-99e7-45f3-87d2-acf824b1300b}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	// 相对压力
+	YL1 : REAL;
+	YL2 : REAL;
+	fYL1:REAL;
+	fYL2:REAL;
+	// 绝对压力
+	YL1A : REAL;
+	YL2A : REAL;
+	fYL1A:REAL;
+	fYL2A:REAL;
+	
+	// 编码器
+	BMQ : REAL;
+	
+	//处理后的转角、角速度、角加速度
+	fBMQ : REAL;
+	fdBMQ : REAL;
+	fddBMQ : REAL;
+	
+	// 位移传感器
+	WY : REAL;
+	
+	// 伸缩控制位移
+	x_SS : REAL :=150;
+	xd:REAL:=0;
+	
+	//要输出的比例阀开度 相对值-1~1
+	// 归一化开度
+	BLFKD:REAL:=0;
+	
+	//控制参数
+	KP:REAL:=0.3;
+	KI:REAL:=0.05;//原来是0.2
+	KD:REAL;
+	KV:REAL;
+	vmax:REAL:=100;//限制最大速度mm/s
+	w: ARRAY[0..10] OF REAL := [5,5,5,5,4.5,4.5,4,4,3.5,3.5,0];//辨识速度
+	up_int:REAL:=1;
+	down_int:REAL:=-1;//积分饱和
+	up_out:REAL:=1;
+	down_out:REAL:=-1;//输出限幅
+	
+	Amp:REAL:=100/2;
+	Bias:REAL:=150;
+	ZhouQi:REAL:=10;
+	
+	//LADRC 控制参数
+	LADRC_b0:REAL:=2E5;
+	LADRC_w0:REAL:=60;
+	LADRC_wc:REAL:=15;
+	LADRC_Ka:REAL:=0; //是否开启加速度前馈补偿
+	LADRC_Kv:REAL:=1; //是否开启速度前馈补偿
+	
+	LADRC_u_up:REAL:=1;
+	LADRC_u_down:REAL:=-1;
+	
+	
+	//backstep控制参数
+	d1:REAL;
+	BC_xd:REAL;
+	BC_k1:REAL:=10;
+	BC_k2:REAL:=10;
+	BC_k3:REAL:=10;
+	BC_kr1:REAL:=0;
+	BC_kr2:REAL:=0;
+	BC_beta1:REAL:=0;
+	BC_beta2:REAL:=0;
+	BC_b0:REAL:=5E6;
+	BC_w2:REAL:=50;
+	BC_w3:REAL:=50;
+    BC_f1:REAL:=50;
+	BC_f2:REAL:=50;
+	BC_z1:REAL;
+	BC_z2:REAL;
+	BC_z3:REAL;
+	BC_dz2:REAL;
+	BC_dda1:REAL;
+	BC_a1:REAL;
+	BC_ar1:REAL;
+	BC_da1:REAL;
+	BC_da2:REAL;
+	BC_da2_BC:REAL;
+	BC_a2:REAL;
+	BC_ar2:REAL;
+	BC_u:REAL;
+	BC_u_up:REAL:=1;
+	BC_u_down:REAL:=-1;
+	BC_d1:REAL;
+	BC_d2:REAL;
+	M:REAL:=0.1;        //质量
+	L:REAL:=1;          //力臂 没有，所以为1
+	
+	//指令参数
+	CTRLMode:BYTE:=1; //控制模式  0：停止     1：手动阶跃     2：正弦     3：自动连续斜坡
+	CTRLMode_L:BYTE:=0;
+	
+	controllerChoose:BYTE:=3;// 控制器选择 1:PID 2:VFPID  3:LADRC  4:反步法
+	
+	CycleT: REAL:=0.001;
+	safe_u_up:REAL:=1;
+	safe_u_dn:REAL:=-1;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

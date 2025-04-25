@@ -1,0 +1,147 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_DLADRC" Id="{abead2f3-3f69-43e1-869e-1137482f094f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_DLADRC  
+VAR_INPUT
+	xr:REAL; 
+	y:REAL;
+	u_L:REAL; 
+	b0:REAL:=1;
+	w0:REAL:=1;
+	wc:REAL:=1;
+	
+	kv:REAL:=0; //用于表示速度部分是否用于控制器计算  取值为1或0
+	ka:REAL:=0; //用于表示加速度部分是否用于控制器的计算  取值为1或0
+END_VAR
+VAR_OUTPUT
+	u:REAL; //计算得到的控制律
+END_VAR
+VAR
+	Ts:REAL:=0.001; //采样时间控制时间
+	z1:REAL;
+	z2:REAL;
+	z3:REAL;
+	z4:REAL;
+	
+	w1:REAL;
+	w2:REAL;
+	w3:REAL;
+	
+	w1_L:REAL:=0;
+	w2_L:REAL:=0;
+	w3_L:REAL:=0;
+	
+	z1_L:REAL:=0; //上次状态估计量
+	z2_L:REAL:=0;
+	z3_L:REAL:=0;
+	z4_L:REAL:=0;
+	
+	//u_L:REAL; //当前控制量（相对开度） 即上次计算的结果
+	u0:REAL;
+	xr_L:REAL:=0; //用于计算指令的速度 
+
+	vr_L:REAL:=0; //用于计算指令的加速度
+
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[DLESO();
+controller();]]></ST>
+    </Implementation>
+    <Method Name="controller" Id="{6ffaed05-4192-488e-ac5d-780b71eebaa1}">
+      <Declaration><![CDATA[METHOD controller : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	vr:REAL; 
+	ar:REAL; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[vr:=(xr-xr_L)/Ts;
+ar:=(vr-vr_L)/Ts;
+u0:=wc*wc*wc*(xr-z1)+3*wc*wc*(vr*kv-z2)+3*wc*(ar*ka-z3);
+
+u:=(u0-z4)/b0;
+
+u:=saturation(upLMT:=GFY.LADRC_u_up,downLMT:=GFY.LADRC_u_down,input:=u);
+
+
+xr_L:=xr;
+vr_L:=vr;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="DLESO" Id="{aa9ae40f-a15a-4371-a987-b5f0e8cce785}">
+      <Declaration><![CDATA[METHOD DLESO : BOOL
+VAR_INPUT
+END_VAR
+VAR
+	
+	G1:REAL;
+	G2:REAL;
+	G3:REAL;
+
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[G1:=3*w0;
+G2:=3*w0*w0;
+G3:=w0*w0*w0;
+
+
+//z1:=z1_L+Ts*(z2_L+4*w0*ez);
+//z2:=z2_L+Ts*(z3_L+6*w0*w0*ez);
+//z3:=z3_L+Ts*(z4_L+4*w0*w0*w0*ez)+Ts*b0*u_L;
+//z4:=z4_L+Ts*(w0*w0*w0*w0*ez);
+
+w1:=w1_L+Ts*(w2_L-G1*w1_L-G1*G1*y+G2*y);
+w2:=w2_L+Ts*(w3_L-G2*w1_L-G2*G1*y+G3*y)+Ts*b0*u_L;
+w3:=w3_L+Ts*(-G3*w1_L-G3*G1*y);
+
+w1_L:=w1;
+w2_L:=w2;
+w3_L:=w3;
+
+z1:=y;
+z2:=w1+G1*y;
+z3:=w2+G2*y;
+z4:=w3+G3*y;
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_DLADRC">
+      <LineId Id="9" Count="0" />
+      <LineId Id="52" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_DLADRC.controller">
+      <LineId Id="11" Count="1" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="34" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_DLADRC.DLESO">
+      <LineId Id="5" Count="0" />
+      <LineId Id="41" Count="1" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="2" />
+      <LineId Id="29" Count="3" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="44" Count="1" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="17" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

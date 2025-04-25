@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Backstep_ADRC" Id="{074439a2-bf1b-46b7-945c-91225de65dbc}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Backstep_ADRC
+VAR_INPUT
+	x1d:REAL;
+	x1:REAL;   
+	x2:REAL;   
+	x3:REAL;   
+	cyct:REAL;
+	k1:REAL;
+	k2:REAL;
+	k3:REAL;
+	L_d:REAL:=0.16;
+	b:REAL;
+	b0:REAL;
+	w2:REAL;
+	w3:REAL;
+	kr1:REAL;
+	kr2:REAL;
+	beta1:REAL;
+	beta2:REAL;
+	M:REAL;  //质量，任意估计一个
+	aw:REAL; //虚拟控制率a2补偿项
+	daw:REAL; //aw的微分
+	d1:REAL; //最终控制率u补偿项
+	u_L:REAL; //上一次的开度
+END_VAR
+VAR_OUTPUT
+	z1:REAL;
+	a1:REAL;
+	ar1:REAL;
+	z2:REAL;
+	dz2:REAL;
+	a2:REAL;
+	ar2:REAL;
+	z3:REAL;
+	u:REAL;
+	da1:REAL;
+	dda1:REAL;
+	da2:REAL;
+END_VAR
+VAR
+
+	L_x1d:REAL:=0;
+	LL_x1d:REAL:=0;
+	dz1:REAL;
+	dx1d:REAL;
+	L_dx1d:REAL:=0;
+	ddx1d:REAL:=0;
+	L_ddx1d:REAL:=0;
+	dddx1d:REAL:=0;
+	
+	sign1:REAL:=0;
+	Inte11:REAL:=0;
+	Inte12:REAL:=0;
+	Inte21:REAL:=0;
+	Inte22:REAL:=0;
+	
+	Tf1:REAL;
+	x2f:REAL;
+	L_x2f:REAL:=0;
+	L_a2:REAL:=0;
+	x3f:REAL;
+	L_x3f:REAL:=0;
+	
+	Tf2:REAL;
+	
+	edx1:REAL;
+	ex1:REAL:=0;
+	ex2:REAL:=0;
+	edx2:REAL;
+	ed1:REAL;
+	edd1:REAL;
+	
+	ex3:REAL:=0;
+	edx3:REAL;
+	ed2:REAL;
+	edd2:REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[L_d:=GFY.d;
+
+edx1:=ex2-3*w2*(ex1-x1);
+edx2:=(x3-aw)/M*L_d+ed1-3*w2*w2*(ex1-x1);
+edd1:=-3*w2*w2*(ex1-x1);
+
+edx3:=b0*u_L+ed2-2*w3*(ex3-x3);
+edd2:=-w3*w3*(ex3-x3);
+
+ex1:=ex1+edx1*cyct;
+ex2:=ex2+edx2*cyct;
+ex3:=ex3+edx3*cyct;
+ed2:=ed2+edd2*cyct;
+ed1:=ed1+edd1*cyct;
+
+z1:=x1-x1d;
+dx1d:=(x1d-L_x1d)/cyct;
+dz1:=ex2-dx1d;
+L_x1d:=x1d;
+a1:=dx1d;
+
+z2:=ex2-a1;
+ddx1d:=(dx1d-L_dx1d)/cyct;
+L_dx1d:=dx1d;
+dddx1d:=(ddx1d-L_ddx1d)/cyct;
+L_ddx1d:=ddx1d;
+
+da1:=ddx1d;
+
+ar1:=-M*kr1*z2-(kr1*k2*Inte11+beta1*Inte12);
+Inte11:=Inte11+z2*cyct;
+Inte12:=Inte12+Sign(x:=z2)*cyct;
+
+a2:=(M*da1-M*ed1)/L_d+aw;
+
+dda1:=dddx1d;
+dz2:=edx2-da1;
+
+z3:=x3-a2;
+
+da2:=(M*dda1-M*edd1)/L_d+daw;
+
+ar2:=-kr2*z3-(kr2*k3*Inte21+beta2*Inte22);
+Inte21:=Inte21+z3*cyct;
+Inte22:=Inte22+Sign(x:=z3)*cyct;
+
+u:=(-k3*z3-k2*z2-k1*z1+da2-ed2+ar2)/b0;
+
+u:=saturation(upLMT:=GFY.BCADRC_u_up,downLMT:=GFY.BCADRC_u_down,input:=u);
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Backstep_ADRC">
+      <LineId Id="548" Count="0" />
+      <LineId Id="526" Count="0" />
+      <LineId Id="532" Count="0" />
+      <LineId Id="527" Count="0" />
+      <LineId Id="535" Count="0" />
+      <LineId Id="528" Count="2" />
+      <LineId Id="541" Count="0" />
+      <LineId Id="539" Count="0" />
+      <LineId Id="542" Count="0" />
+      <LineId Id="531" Count="0" />
+      <LineId Id="524" Count="1" />
+      <LineId Id="540" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="404" Count="0" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="185" Count="0" />
+      <LineId Id="187" Count="0" />
+      <LineId Id="425" Count="0" />
+      <LineId Id="424" Count="0" />
+      <LineId Id="411" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="245" Count="0" />
+      <LineId Id="244" Count="0" />
+      <LineId Id="247" Count="0" />
+      <LineId Id="256" Count="0" />
+      <LineId Id="544" Count="0" />
+      <LineId Id="257" Count="0" />
+      <LineId Id="420" Count="0" />
+      <LineId Id="419" Count="0" />
+      <LineId Id="416" Count="0" />
+      <LineId Id="421" Count="0" />
+      <LineId Id="417" Count="0" />
+      <LineId Id="431" Count="0" />
+      <LineId Id="429" Count="0" />
+      <LineId Id="260" Count="2" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="131" Count="1" />
+      <LineId Id="436" Count="0" />
+      <LineId Id="395" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

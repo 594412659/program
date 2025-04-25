@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Diff" Id="{797b218e-1ce1-4f33-8824-9627df8ad67b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION Diff : REAL
+VAR_INPUT
+	cyct:REAL;
+	data:REAL;
+END_VAR
+VAR
+	D:REAL:=0;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Diff:=(data-D)/cyct;
+D:=data;]]></ST>
+    </Implementation>
+    <LineIds Name="Diff">
+      <LineId Id="7" Count="0" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="saturation" Id="{cedd6fbf-34f7-4f84-9965-9e7c47e25e06}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION saturation : REAL
+VAR_INPUT
+	upLMT:REAL;
+	downLMT:REAL;
+	input:REAL;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+IF input>upLMT THEN
+	saturation:=upLMT;
+ELSIF input<downLMT THEN
+	saturation:=downLMT;
+ELSE
+	saturation:=input;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="saturation">
+      <LineId Id="14" Count="6" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

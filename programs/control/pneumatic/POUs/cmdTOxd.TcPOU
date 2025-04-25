@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="cmdTOxd" Id="{f3397063-e5e6-4440-b3e0-16109b3874bf}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK cmdTOxd
+VAR_INPUT
+	xcmd:REAL;	
+	v:REAL;	
+END_VAR
+VAR_OUTPUT
+	xd:REAL; 
+END_VAR
+VAR
+	Last_xcmd:REAL;	  
+	delta:REAL;       
+	maxdelta:REAL;    
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+delta:=xcmd-Last_xcmd;
+maxdelta:=v*GFY.CycleT;
+xd:=Last_xcmd+saturation(upLMT:= maxdelta, downLMT:= -maxdelta, input:=delta );
+Last_xcmd:=xd;]]></ST>
+    </Implementation>
+    <LineIds Name="cmdTOxd">
+      <LineId Id="25" Count="3" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

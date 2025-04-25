@@ -1,0 +1,243 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="GFY" Id="{f937646d-c67f-4e3b-bb67-6b77c190f269}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'global_init_slot'}
+VAR_GLOBAL
+	// 相对压力
+	YL1 : REAL;
+	YL2 : REAL;
+	
+	// 绝对压力
+	YL1A : REAL;
+	YL2A : REAL;
+	
+	// 编码器
+	BMQ : REAL;
+	
+	//处理后的转角、角速度、角加速度
+	fBMQ : REAL;
+	fdBMQ : REAL;
+	fddBMQ : REAL;
+	
+	// 位移
+	WY : REAL;
+	
+	//处理后的位移、速度、加速度
+	fWY : REAL;
+	fdWY : REAL;
+	fddWY : REAL;
+	
+	//处理后的压力、压力的微分
+	fYL1A : REAL;
+	dfYL1A : REAL;
+	fYL2A : REAL;
+	dfYL2A : REAL;
+	
+	fYL1 : REAL;
+	dfYL1 : REAL;
+	fYL2 : REAL;
+	dfYL2 : REAL;
+	
+	//要输出的比例阀开度 相对值-1~1
+	BLFKD:REAL:=0; //纯开度 不含死区
+	BLFKD_final:REAL:=0;//最终开度 直接关联到比例阀 
+	
+	//比例阀死区占比
+	deadareaP:REAL:=0; // 正向死区
+	deadareaN:REAL:=-0; // 反向死区
+	
+	//控制参数
+	CycleT:REAL:=0.001;
+	
+	//新阀数据
+	//KP:REAL:=0.03;
+	//KI:REAL:=1E-5;
+	//KD:REAL:=0.02;
+	//KV:REAL:=17;//10*CycleT;
+	
+	// 老阀数据
+	KP:REAL:=0.01;
+	KI:REAL:=0.006*CycleT;
+	KD:REAL:=0.00025/CycleT;
+	KV:REAL:=0.0012/CycleT;//10*CycleT;
+	
+	KF:REAL:=5E-5;
+	Kdx:REAL;
+	KdF:REAL:=2e-5;
+	vmax:REAL:=0.09;//限制最大速度0.09m/s
+	wmax:REAL:=100;//限制最大角速度0.45deg/s
+	w: ARRAY[0..10] OF REAL := [5,5,5,5,4.5,4.5,4,4,3.5,3.5,0];//辨识速度
+	erro:REAL;  //误差
+	
+	up_int:REAL:=0.095;
+	down_int:REAL:=-0.095;//积分饱和
+	
+	//所有控制器的输出限制
+	up_out:REAL:=0.13;
+	down_out:REAL:=-0.13;//输出限幅
+	
+	//LADRC 控制参数
+	//新阀数据
+	//LADRC_b0:REAL:=1E5;
+	//LADRC_w0:REAL:=60;
+	
+	//老阀数据
+	LADRC_b0:REAL:=3.5E5;
+	LADRC_w0:REAL:=60;
+	
+	LADRC_wc:REAL:=15;
+	LADRC_Ka:REAL:=0;
+	LADRC_Kv:REAL:=1;
+	LADRC_Ki:REAL:=0;
+	LADRC_upLMT_int:REAL:=0.05;
+	LADRC_downLMT_int:REAL:=-0.05;
+	
+	
+	LADRC_u_up:REAL:=0.13;
+	LADRC_u_down:REAL:=0.02;
+	
+	//backstep控制参数
+	d1:REAL;
+	BC_xd:REAL;
+	BC_k1:REAL:=6;
+	BC_k2:REAL:=30;
+	BC_k3:REAL:=6;
+	BC_kr1:REAL:=0;
+	BC_kr2:REAL:=0;
+	BC_beta1:REAL:=0;
+	BC_beta2:REAL:=0;
+	BC_b0:REAL:=1.1E5;
+	BC_w2:REAL:=50;
+	BC_w3:REAL:=50;
+    BC_f1:REAL:=50;
+	BC_f2:REAL:=50;
+	BC_z1:REAL;
+	BC_z2:REAL;
+	BC_z3:REAL;
+	BC_dz2:REAL;
+	BC_dda1:REAL;
+	BC_a1:REAL;
+	BC_ar1:REAL;
+	BC_da1:REAL;
+	BC_da2:REAL;
+	BC_da2_BC:REAL;
+	BC_a2:REAL;
+	BC_ar2:REAL;
+	BC_u:REAL;
+	BC_u_up:REAL:=0.13;
+	BC_u_down:REAL:=0.03;
+	BC_d1:REAL;
+	BC_d2:REAL;
+	M:REAL:=3.5;        //转动惯量
+	L:REAL:=0.16;       //力臂 
+	
+	//BCADRC控制参数
+	BCADRC_d1:REAL;
+	BCADRC_b:REAL;
+	BCADRC_xd:REAL;
+	BCADRC_k1:REAL:=10000;
+	BCADRC_k2:REAL:=6000;
+	BCADRC_k3:REAL:=15;
+	BCADRC_kr1:REAL:=0;
+	BCADRC_kr2:REAL:=0;
+	BCADRC_beta1:REAL:=0;
+	BCADRC_beta2:REAL:=0;
+	BCADRC_b0:REAL:=1E7;
+	BCADRC_w2:REAL:=50;
+	BCADRC_w3:REAL:=50;
+    BCADRC_f1:REAL:=50;
+	BCADRC_f2:REAL:=50;
+	BCADRC_z1:REAL;
+	BCADRC_z2:REAL;
+	BCADRC_z3:REAL;
+	BCADRC_dz2:REAL;
+	BCADRC_dda1:REAL;
+	BCADRC_a1:REAL;
+	BCADRC_ar1:REAL;
+	BCADRC_da1:REAL;
+	BCADRC_da2:REAL;
+	BCADRC_da2_BC:REAL;
+	BCADRC_a2:REAL;
+	BCADRC_ar2:REAL;
+	BCADRC_u:REAL;
+	BCADRC_u_up:REAL:=0.13;
+	BCADRC_u_down:REAL:=0.03;
+	
+	//指令参数
+	CTRLMode:BYTE:=1; //控制模式  0：停止     1：手动阶跃     2：正弦     3：自动连续斜坡   4 激励轨迹辨识
+	CTRLMode_L:BYTE:=0;
+	
+	controllerChoose:BYTE:=3;// 控制器选择 1:PID 2:VFPID  3:LADRC  4:SFVFPID  5:降阶ADRC  6：反步法 跑正弦的时候再给rise增益
+	
+	safeLMTup:REAL:=0.13;
+	safeLMTdn:REAL:=0.03;
+	
+	RMSE:REAL;
+	star_err:BOOL:=FALSE;
+	error_n:REAL:=0;
+	error2_sum:REAL:=0;
+	
+	// 俯仰控制角度
+	s_FY : REAL:=0;
+	
+	// 俯仰控制位移
+	x_FY : REAL;
+	
+	xd:REAL; //速度限幅后的指令
+	
+	Amp:REAL:=10;
+	Bias:REAL:=0;
+	ZhouQi:REAL:=10;
+	
+	//辨识数据
+	katan:REAL:=1; //摩擦切换连续函数
+	Kfric:REAL:=1;//有无摩擦
+	d:REAL;  //力臂长度
+	dY:REAL;
+	Y:REAL;
+	Yyz:REAL;
+	dYyz:REAL;
+	a1:REAL; //对应重力矩余弦分量
+	a2:REAL; //对应重力矩正弦分量
+	a3:REAL; //对应气缸库仑摩擦
+	a4:REAL; //对应气缸粘性摩擦
+	a5:REAL; //对应俯仰关节库仑摩擦
+	a6:REAL; //对应俯仰关节粘性摩擦
+	
+	IY1:REAL;  //对应dp1
+	Y1:REAL;   //对应p1
+	IY2:REAL;  //对应dp2
+	Y2:REAL;   //对应p2
+	Y1yz:REAL;
+	Y2yz:REAL;
+	DIff_n:REAL:=1;
+	
+	b11:REAL;   
+	b12:REAL;   
+	Ib13:REAL;  
+	b14:REAL;
+	b21:REAL;   
+	b22:REAL;  
+	Ib23:REAL;  
+	b24:REAL;
+	u:REAL;
+	
+	Va:REAL;
+	Vb:REAL;
+	BC_kb: INT;
+	
+	bv21:REAL;
+	bv23:REAL;
+	bv24:REAL;
+	bv11:REAL;
+	bv13:REAL;
+	bv14:REAL;
+	
+	map:REAL;
+	
+	dx3yz:REAL;
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

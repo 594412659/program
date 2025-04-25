@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="filter_oneMs" Id="{54067c9d-60a0-4168-b00d-b9dd8e633579}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION filter_oneMs : REAL
+VAR_INPUT
+	f_Hz:REAL:=50;//转折频率；
+	outLast:REAL:=0;//上一次的输出结果
+	input:REAL;
+END_VAR
+VAR
+	Tf:REAL:=1/(f_Hz*2*pi);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[filter_oneMs:=0.001/Tf*input+(1-0.001/Tf)*outLast;]]></ST>
+    </Implementation>
+    <LineIds Name="filter_oneMs">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

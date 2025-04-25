@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="Diff_n" Id="{1fea665c-3aa4-4a63-b0a6-bf11aad0604b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Diff_n
+VAR_INPUT
+	cyct:REAL;
+	data:REAL;
+	n:REAL;
+END_VAR
+
+VAR_OUTPUT
+	D:REAL:=0;
+END_VAR
+VAR
+	m:REAL:=0;
+	L_data:REAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[m:=m+1;
+IF m>=n THEN
+	D:=(data-L_data)/cyct;
+	L_data:=data;
+	m:=0;
+END_IF
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="Diff_n">
+      <LineId Id="24" Count="4" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="18" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
